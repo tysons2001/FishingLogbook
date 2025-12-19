@@ -7,6 +7,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -30,7 +32,6 @@ fun AddCatchScreen(onDone: () -> Unit) {
 
     val activeTrip by repo.observeActiveTrip().collectAsState(initial = null)
 
-    // Use rememberSaveable so rotation doesn't wipe the form
     var species by rememberSaveable { mutableStateOf("") }
     var length by rememberSaveable { mutableStateOf("") }
     var weight by rememberSaveable { mutableStateOf("") }
@@ -45,9 +46,8 @@ fun AddCatchScreen(onDone: () -> Unit) {
     var savedLon by rememberSaveable { mutableStateOf<Double?>(null) }
     var savedAcc by rememberSaveable { mutableStateOf<Float?>(null) }
 
-    // Save photo as String so it's saveable across rotation
     var photoUriString by rememberSaveable { mutableStateOf<String?>(null) }
-    val photoUri: Uri? = photoUriString?.let { Uri.parse(it) }
+    val photoUri = photoUriString?.let { Uri.parse(it) }
 
     var status by rememberSaveable { mutableStateOf<String?>(null) }
     var isSaving by rememberSaveable { mutableStateOf(false) }
@@ -56,7 +56,7 @@ fun AddCatchScreen(onDone: () -> Unit) {
 
     val permsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { /* no-op */ }
+    ) { }
 
     LaunchedEffect(Unit) {
         permsLauncher.launch(
@@ -68,14 +68,12 @@ fun AddCatchScreen(onDone: () -> Unit) {
         )
     }
 
-    // Gallery picker
     val pickImage = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) photoUriString = uri.toString()
     }
 
-    // Camera
     fun newTempPhotoUri(): Uri {
         val dir = File(ctx.cacheDir, "photos").apply { mkdirs() }
         val file = File(dir, "catch_${System.currentTimeMillis()}.jpg")
@@ -83,6 +81,7 @@ fun AddCatchScreen(onDone: () -> Unit) {
     }
 
     var pendingCameraUriString by rememberSaveable { mutableStateOf<String?>(null) }
+
     val takePicture = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { ok ->
@@ -91,24 +90,18 @@ fun AddCatchScreen(onDone: () -> Unit) {
     }
 
     fun refreshLiveGps() {
-        try {
-            val client = LocationServices.getFusedLocationProviderClient(ctx)
-            client.lastLocation
-                .addOnSuccessListener { loc ->
-                    if (loc != null) {
-                        liveLat = loc.latitude
-                        liveLon = loc.longitude
-                        liveAcc = loc.accuracy
-                        status = "GPS updated"
-                    } else {
-                        status = "No GPS fix yet (try again outside)"
-                    }
-                }
-                .addOnFailureListener { e ->
-                    status = "GPS failed: ${e.message}"
-                }
-        } catch (e: Exception) {
-            status = "GPS error: ${e.message}"
+        val client = LocationServices.getFusedLocationProviderClient(ctx)
+        client.lastLocation.addOnSuccessListener { loc ->
+            if (loc != null) {
+                liveLat = loc.latitude
+                liveLon = loc.longitude
+                liveAcc = loc.accuracy
+                status = "GPS updated"
+            } else {
+                status = "No GPS fix yet"
+            }
+        }.addOnFailureListener {
+            status = "GPS failed"
         }
     }
 
@@ -117,17 +110,22 @@ fun AddCatchScreen(onDone: () -> Unit) {
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { pad ->
         Column(
-            Modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(pad)
+                .imePadding()
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+
             status?.let { Text(it) }
 
             Text(
-                if (activeTrip != null) "Will attach to active trip"
-                else "No active trip - catch will be saved standalone"
+                if (activeTrip != null)
+                    "Will attach to active trip"
+                else
+                    "No active trip - catch will be saved standalone"
             )
 
             OutlinedTextField(
@@ -137,7 +135,7 @@ fun AddCatchScreen(onDone: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = length,
                     onValueChange = { length = it },
@@ -167,38 +165,24 @@ fun AddCatchScreen(onDone: () -> Unit) {
                 minLines = 3
             )
 
-            Card(Modifier.fillMaxWidth()) {
+            Card {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("GPS", style = MaterialTheme.typography.titleMedium)
-
-                    val liveTxt =
-                        if (liveLat != null && liveLon != null)
-                            "Live: %.5f, %.5f (acc %sm)".format(liveLat, liveLon, (liveAcc?.toInt() ?: 0).toString())
-                        else "Live: -"
-
-                    val savedTxt =
-                        if (savedLat != null && savedLon != null)
-                            "Saved: %.5f, %.5f (acc %sm)".format(savedLat, savedLon, (savedAcc?.toInt() ?: 0).toString())
-                        else "Saved: -"
-
-                    Text(liveTxt)
-                    Text(savedTxt)
+                    Text("Live: ${liveLat ?: "-"}, ${liveLon ?: "-"}")
+                    Text("Saved: ${savedLat ?: "-"}, ${savedLon ?: "-"}")
 
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = { refreshLiveGps() }) { Text("Get GPS") }
-
                         Button(
-                            enabled = liveLat != null && liveLon != null,
+                            enabled = liveLat != null,
                             onClick = {
                                 savedLat = liveLat
                                 savedLon = liveLon
                                 savedAcc = liveAcc
-                                status = "GPS saved"
                             }
                         ) { Text("Save GPS") }
-
                         Button(
-                            enabled = savedLat != null && savedLon != null,
+                            enabled = savedLat != null,
                             onClick = {
                                 val uri = Uri.parse("geo:$savedLat,$savedLon?q=$savedLat,$savedLon")
                                 ctx.startActivity(Intent(Intent.ACTION_VIEW, uri))
@@ -208,8 +192,8 @@ fun AddCatchScreen(onDone: () -> Unit) {
                 }
             }
 
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Card {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Photo", style = MaterialTheme.typography.titleMedium)
 
                     if (photoUri != null) {
@@ -238,53 +222,44 @@ fun AddCatchScreen(onDone: () -> Unit) {
                 }
             }
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(12.dp))
 
-            val canSave = species.trim().isNotEmpty() && !isSaving
-
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(modifier = Modifier.weight(1f), onClick = onDone, enabled = !isSaving) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    modifier = Modifier.weight(1f),
+                    onClick = onDone,
+                    enabled = !isSaving
+                ) {
                     Text("Cancel")
                 }
 
                 Button(
                     modifier = Modifier.weight(1f),
-                    enabled = canSave,
+                    enabled = species.isNotBlank() && !isSaving,
                     onClick = {
                         scope.launch {
-                            if (species.trim().isEmpty()) {
-                                snackbarHostState.showSnackbar("Species is required")
-                                return@launch
-                            }
-
                             isSaving = true
-                            try {
-                                repo.addCatch(
-                                    CatchEntity(
-                                        tripId = activeTrip?.id,
-                                        timestampMillis = System.currentTimeMillis(),
-                                        species = species.trim(),
-                                        lengthCm = length.toDoubleOrNull(),
-                                        weightKg = weight.toDoubleOrNull(),
-                                        lure = lure.trim().ifBlank { null },
-                                        notes = notes.trim().ifBlank { null },
-                                        latitude = savedLat,
-                                        longitude = savedLon,
-                                        accuracyM = savedAcc,
-                                        photoUri = photoUriString
-                                    )
+                            repo.addCatch(
+                                CatchEntity(
+                                    tripId = activeTrip?.id,
+                                    timestampMillis = System.currentTimeMillis(),
+                                    species = species.trim(),
+                                    lengthCm = length.toDoubleOrNull(),
+                                    weightKg = weight.toDoubleOrNull(),
+                                    lure = lure.ifBlank { null },
+                                    notes = notes.ifBlank { null },
+                                    latitude = savedLat,
+                                    longitude = savedLon,
+                                    accuracyM = savedAcc,
+                                    photoUri = photoUriString
                                 )
-                                snackbarHostState.showSnackbar("Catch saved")
-                                onDone()
-                            } catch (e: Exception) {
-                                snackbarHostState.showSnackbar("Save failed: ${e.message}")
-                            } finally {
-                                isSaving = false
-                            }
+                            )
+                            snackbarHostState.showSnackbar("Catch saved")
+                            onDone()
                         }
                     }
                 ) {
-                    Text(if (isSaving) "Saving..." else "Save")
+                    Text("Save")
                 }
             }
         }
