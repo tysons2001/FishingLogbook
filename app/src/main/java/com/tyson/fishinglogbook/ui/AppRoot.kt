@@ -4,9 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.tyson.fishinglogbook.ui.screens.AddTripScreen
-import com.tyson.fishinglogbook.ui.screens.HomeScreen
-import com.tyson.fishinglogbook.ui.screens.TripScreen
+import com.tyson.fishinglogbook.ui.screens.*
 
 @Composable
 fun AppRoot() {
@@ -16,14 +14,24 @@ fun AppRoot() {
         composable("home") {
             HomeScreen(
                 onStartTrip = { nav.navigate("trip_add") },
-                onOpenActiveTrip = { nav.navigate("trip_active") }
+                onOpenActiveTrip = { nav.navigate("trip_active") },
+                onAddCatch = { nav.navigate("catch_add") },
+                onViewCatches = { nav.navigate("catch_list") }
             )
         }
-        composable("trip_add") {
-            AddTripScreen(onDone = { nav.popBackStack() })
+        composable("trip_add") { AddTripScreen(onDone = { nav.popBackStack() }) }
+        composable("trip_active") { TripScreen(onBack = { nav.popBackStack() }) }
+
+        composable("catch_add") { AddCatchScreen(onDone = { nav.popBackStack() }) }
+        composable("catch_list") {
+            CatchListScreen(
+                onBack = { nav.popBackStack() },
+                onOpenCatch = { id -> nav.navigate("catch/$id") }
+            )
         }
-        composable("trip_active") {
-            TripScreen(onBack = { nav.popBackStack() })
+        composable("catch/{id}") { back ->
+            val id = back.arguments?.getString("id")?.toLongOrNull() ?: 0L
+            CatchDetailScreen(catchId = id, onBack = { nav.popBackStack() })
         }
     }
 }
