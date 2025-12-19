@@ -4,6 +4,7 @@ class Repository(private val dao: AppDao) {
     fun observeTrips() = dao.observeTrips()
     fun observeActiveTrip() = dao.observeActiveTrip()
     fun observeAllCatches() = dao.observeAllCatches()
+    fun observeCatch(id: Long) = dao.observeCatch(id)
 
     suspend fun startTrip(name: String?, waterway: String?, notes: String?): Long {
         return dao.insertTrip(
