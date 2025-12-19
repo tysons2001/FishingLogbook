@@ -10,7 +10,10 @@ import com.tyson.fishinglogbook.data.Repository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onStartTrip: () -> Unit) {
+fun HomeScreen(
+    onStartTrip: () -> Unit,
+    onOpenActiveTrip: () -> Unit
+) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val repo = remember { Repository(AppDatabase.get(ctx).dao()) }
     val activeTrip by repo.observeActiveTrip().collectAsState(initial = null)
@@ -28,7 +31,18 @@ fun HomeScreen(onStartTrip: () -> Unit) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Status", style = MaterialTheme.typography.titleMedium)
                     Text(if (activeTrip != null) "Active trip running ✅" else "No active trip")
-                    Button(onClick = onStartTrip) { Text("Start trip (next batch)") }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(
+                            enabled = activeTrip == null,
+                            onClick = onStartTrip
+                        ) { Text("Start trip") }
+
+                        Button(
+                            enabled = activeTrip != null,
+                            onClick = onOpenActiveTrip
+                        ) { Text("Open trip") }
+                    }
                 }
             }
 
@@ -39,7 +53,7 @@ fun HomeScreen(onStartTrip: () -> Unit) {
                 }
             }
 
-            Text("Next: Trips screen + Add Catch + GPS + Photos", style = MaterialTheme.typography.bodyMedium)
+            Text("Next batch: Add Catch + GPS + Photos", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
