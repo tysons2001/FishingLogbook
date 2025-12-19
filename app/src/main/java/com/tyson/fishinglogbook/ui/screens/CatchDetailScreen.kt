@@ -27,7 +27,6 @@ fun CatchDetailScreen(
     val fmt = remember { SimpleDateFormat("EEE d MMM yyyy, h:mm a", Locale.getDefault()) }
 
     var showConfirmDelete by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -54,8 +53,6 @@ fun CatchDetailScreen(
             Modifier.fillMaxSize().padding(pad).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            message?.let { Text(it) }
-
             Text(c.species, style = MaterialTheme.typography.titleLarge)
             Text(fmt.format(Date(c.timestampMillis)))
 
@@ -65,7 +62,6 @@ fun CatchDetailScreen(
                     Text("Weight: ${c.weightKg?.let { "$it kg" } ?: "—"}")
                     Text("Lure/Bait: ${c.lure ?: "—"}")
                     Text("Notes: ${c.notes ?: "—"}")
-                    Text("Trip: ${c.tripId?.toString() ?: "None"}")
                 }
             }
 
@@ -107,6 +103,17 @@ fun CatchDetailScreen(
                 }
             }
 
+            // Weather card
+            if (c.weatherTempC != null || c.weatherPressureHpa != null) {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Weather", style = MaterialTheme.typography.titleMedium)
+                        Text("Temperature: ${c.weatherTempC?.let { "${"%.1f".format(it)} °C" } ?: "—"}")
+                        Text("Pressure: ${c.weatherPressureHpa?.let { "${"%.0f".format(it)} hPa" } ?: "—"}")
+                    }
+                }
+            }
+
             if (!c.photoUri.isNullOrBlank()) {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -142,4 +149,4 @@ fun CatchDetailScreen(
             )
         }
     }
-}
+                             }
