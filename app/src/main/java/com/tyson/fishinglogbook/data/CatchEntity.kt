@@ -19,15 +19,20 @@ import androidx.room.PrimaryKey
 )
 data class CatchEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val tripId: Long? = null,
+    val tripId: Long?,
     val timestampMillis: Long,
     val species: String,
-    val lengthCm: Double? = null,
-    val weightKg: Double? = null,
-    val lure: String? = null,
-    val notes: String? = null,
-    val latitude: Double? = null,
-    val longitude: Double? = null,
-    val accuracyM: Float? = null,
-    val photoUri: String? = null
+    val lengthCm: Double?,
+    val weightKg: Double?,
+    val lure: String?,
+    val notes: String?,
+    val latitude: Double?,
+    val longitude: Double?,
+    val accuracyM: Float?,
+    val photoUri: String?,
+
+    // NEW (Weather)
+    val weatherTempC: Double?,
+    val weatherPressureHpa: Double?,
+    val weatherFetchedAtMillis: Long?
 )
