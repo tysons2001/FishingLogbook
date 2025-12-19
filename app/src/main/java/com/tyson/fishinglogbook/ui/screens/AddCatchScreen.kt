@@ -105,4 +105,170 @@ fun AddCatchScreen(onDone: () -> Unit) {
         }
     }
 
-    Scaffold(topBar = { TopAppBar(title
+    Scaffold(topBar = { TopAppBar(title = { Text("Add Catch") }) }) { pad ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(pad)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            status?.let { Text(it) }
+
+            if (activeTrip != null) {
+                Text("Will attach to active trip")
+            } else {
+                Text("No active trip - catch will be saved standalone")
+            }
+
+            OutlinedTextField(
+                value = species,
+                onValueChange = { species = it },
+                label = { Text("Species (required)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = length,
+                    onValueChange = { length = it },
+                    label = { Text("Length (cm)") },
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = weight,
+                    onValueChange = { weight = it },
+                    label = { Text("Weight (kg)") },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            OutlinedTextField(
+                value = lure,
+                onValueChange = { lure = it },
+                label = { Text("Lure/Bait") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = notes,
+                onValueChange = { notes = it },
+                label = { Text("Notes") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3
+            )
+
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("GPS", style = MaterialTheme.typography.titleMedium)
+
+                    val liveTxt =
+                        if (liveLat != null && liveLon != null)
+                            "Live: %.5f, %.5f (acc %sm)".format(
+                                liveLat,
+                                liveLon,
+                                (liveAcc?.toInt() ?: 0).toString()
+                            )
+                        else "Live: -"
+
+                    val savedTxt =
+                        if (savedLat != null && savedLon != null)
+                            "Saved: %.5f, %.5f (acc %sm)".format(
+                                savedLat,
+                                savedLon,
+                                (savedAcc?.toInt() ?: 0).toString()
+                            )
+                        else "Saved: -"
+
+                    Text(liveTxt)
+                    Text(savedTxt)
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = { refreshLiveGps() }) { Text("Get GPS") }
+
+                        Button(
+                            enabled = liveLat != null && liveLon != null,
+                            onClick = {
+                                savedLat = liveLat
+                                savedLon = liveLon
+                                savedAcc = liveAcc
+                            }
+                        ) { Text("Save GPS") }
+
+                        Button(
+                            enabled = savedLat != null && savedLon != null,
+                            onClick = {
+                                val uri = Uri.parse("geo:$savedLat,$savedLon?q=$savedLat,$savedLon")
+                                ctx.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                            }
+                        ) { Text("Maps") }
+                    }
+                }
+            }
+
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Photo", style = MaterialTheme.typography.titleMedium)
+
+                    if (photoUri != null) {
+                        AsyncImage(
+                            model = photoUri,
+                            contentDescription = "Catch photo",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        Text("No photo selected")
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = {
+                            pendingCameraUri = newTempPhotoUri()
+                            takePicture.launch(pendingCameraUri!!)
+                        }) { Text("Take photo") }
+
+                        Button(onClick = {
+                            pickImage.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }) { Text("Pick gallery") }
+                    }
+                }
+            }
+
+            Spacer(Modifier.weight(1f))
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(modifier = Modifier.weight(1f), onClick = onDone) { Text("Cancel") }
+
+                Button(
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        scope.launch {
+                            if (species.trim().isEmpty()) {
+                                status = "Species is required."
+                                return@launch
+                            }
+
+                            repo.addCatch(
+                                CatchEntity(
+                                    tripId = activeTrip?.id,
+                                    timestampMillis = System.currentTimeMillis(),
+                                    species = species.trim(),
+                                    lengthCm = length.toDoubleOrNull(),
+                                    weightKg = weight.toDoubleOrNull(),
+                                    lure = lure.trim().ifBlank { null },
+                                    notes = notes.trim().ifBlank { null },
+                                    latitude = savedLat,
+                                    longitude = savedLon,
+                                    accuracyM = savedAcc,
+                                    photoUri = photoUri?.toString()
+                                )
+                            )
+                            onDone()
+                        }
+                    }
+                ) { Text("Save") }
+            }
+        }
+    }
+}
