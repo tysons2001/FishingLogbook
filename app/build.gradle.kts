@@ -13,8 +13,8 @@ android {
         applicationId = "com.tyson.fishinglogbook"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
     }
 
     compileOptions {
@@ -46,4 +46,10 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
 
     implementation("com.google.android.material:material:1.12.0")
+
+    // GPS
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+
+    // Photos
+    implementation("io.coil-kt:coil-compose:2.7.0")
 }
