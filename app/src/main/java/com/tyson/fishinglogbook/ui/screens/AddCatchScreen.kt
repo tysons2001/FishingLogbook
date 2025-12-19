@@ -20,7 +20,10 @@ import com.google.android.gms.location.LocationServices
 import com.tyson.fishinglogbook.data.AppDatabase
 import com.tyson.fishinglogbook.data.CatchEntity
 import com.tyson.fishinglogbook.data.Repository
+import com.tyson.fishinglogbook.weather.OpenMeteoClient
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,6 +35,7 @@ fun AddCatchScreen(onDone: () -> Unit) {
 
     val activeTrip by repo.observeActiveTrip().collectAsState(initial = null)
 
+    // Rotation-safe form
     var species by rememberSaveable { mutableStateOf("") }
     var length by rememberSaveable { mutableStateOf("") }
     var weight by rememberSaveable { mutableStateOf("") }
@@ -47,7 +51,7 @@ fun AddCatchScreen(onDone: () -> Unit) {
     var savedAcc by rememberSaveable { mutableStateOf<Float?>(null) }
 
     var photoUriString by rememberSaveable { mutableStateOf<String?>(null) }
-    val photoUri = photoUriString?.let { Uri.parse(it) }
+    val photoUri: Uri? = photoUriString?.let { Uri.parse(it) }
 
     var status by rememberSaveable { mutableStateOf<String?>(null) }
     var isSaving by rememberSaveable { mutableStateOf(false) }
@@ -56,7 +60,7 @@ fun AddCatchScreen(onDone: () -> Unit) {
 
     val permsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { }
+    ) { /* no-op */ }
 
     LaunchedEffect(Unit) {
         permsLauncher.launch(
@@ -68,12 +72,14 @@ fun AddCatchScreen(onDone: () -> Unit) {
         )
     }
 
+    // Gallery picker
     val pickImage = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) photoUriString = uri.toString()
     }
 
+    // Camera
     fun newTempPhotoUri(): Uri {
         val dir = File(ctx.cacheDir, "photos").apply { mkdirs() }
         val file = File(dir, "catch_${System.currentTimeMillis()}.jpg")
@@ -90,18 +96,24 @@ fun AddCatchScreen(onDone: () -> Unit) {
     }
 
     fun refreshLiveGps() {
-        val client = LocationServices.getFusedLocationProviderClient(ctx)
-        client.lastLocation.addOnSuccessListener { loc ->
-            if (loc != null) {
-                liveLat = loc.latitude
-                liveLon = loc.longitude
-                liveAcc = loc.accuracy
-                status = "GPS updated"
-            } else {
-                status = "No GPS fix yet"
-            }
-        }.addOnFailureListener {
-            status = "GPS failed"
+        try {
+            val client = LocationServices.getFusedLocationProviderClient(ctx)
+            client.lastLocation
+                .addOnSuccessListener { loc ->
+                    if (loc != null) {
+                        liveLat = loc.latitude
+                        liveLon = loc.longitude
+                        liveAcc = loc.accuracy
+                        status = "GPS updated"
+                    } else {
+                        status = "No GPS fix yet (try again outside)"
+                    }
+                }
+                .addOnFailureListener { e ->
+                    status = "GPS failed: ${e.message}"
+                }
+        } catch (e: Exception) {
+            status = "GPS error: ${e.message}"
         }
     }
 
@@ -110,7 +122,7 @@ fun AddCatchScreen(onDone: () -> Unit) {
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { pad ->
         Column(
-            modifier = Modifier
+            Modifier
                 .fillMaxSize()
                 .padding(pad)
                 .imePadding()
@@ -122,10 +134,8 @@ fun AddCatchScreen(onDone: () -> Unit) {
             status?.let { Text(it) }
 
             Text(
-                if (activeTrip != null)
-                    "Will attach to active trip"
-                else
-                    "No active trip - catch will be saved standalone"
+                if (activeTrip != null) "Will attach to active trip"
+                else "No active trip - catch will be saved standalone"
             )
 
             OutlinedTextField(
@@ -135,7 +145,7 @@ fun AddCatchScreen(onDone: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = length,
                     onValueChange = { length = it },
@@ -165,24 +175,46 @@ fun AddCatchScreen(onDone: () -> Unit) {
                 minLines = 3
             )
 
-            Card {
+            Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("GPS", style = MaterialTheme.typography.titleMedium)
-                    Text("Live: ${liveLat ?: "-"}, ${liveLon ?: "-"}")
-                    Text("Saved: ${savedLat ?: "-"}, ${savedLon ?: "-"}")
+
+                    val liveTxt =
+                        if (liveLat != null && liveLon != null)
+                            "Live: %.5f, %.5f (acc %sm)".format(
+                                liveLat,
+                                liveLon,
+                                (liveAcc?.toInt() ?: 0).toString()
+                            )
+                        else "Live: -"
+
+                    val savedTxt =
+                        if (savedLat != null && savedLon != null)
+                            "Saved: %.5f, %.5f (acc %sm)".format(
+                                savedLat,
+                                savedLon,
+                                (savedAcc?.toInt() ?: 0).toString()
+                            )
+                        else "Saved: -"
+
+                    Text(liveTxt)
+                    Text(savedTxt)
 
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = { refreshLiveGps() }) { Text("Get GPS") }
+
                         Button(
-                            enabled = liveLat != null,
+                            enabled = liveLat != null && liveLon != null,
                             onClick = {
                                 savedLat = liveLat
                                 savedLon = liveLon
                                 savedAcc = liveAcc
+                                status = "GPS saved"
                             }
                         ) { Text("Save GPS") }
+
                         Button(
-                            enabled = savedLat != null,
+                            enabled = savedLat != null && savedLon != null,
                             onClick = {
                                 val uri = Uri.parse("geo:$savedLat,$savedLon?q=$savedLat,$savedLon")
                                 ctx.startActivity(Intent(Intent.ACTION_VIEW, uri))
@@ -192,8 +224,8 @@ fun AddCatchScreen(onDone: () -> Unit) {
                 }
             }
 
-            Card {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("Photo", style = MaterialTheme.typography.titleMedium)
 
                     if (photoUri != null) {
@@ -224,42 +256,68 @@ fun AddCatchScreen(onDone: () -> Unit) {
 
             Spacer(Modifier.height(12.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
-                    modifier = Modifier.weight(1f),
-                    onClick = onDone,
-                    enabled = !isSaving
-                ) {
+            val canSave = species.trim().isNotEmpty() && !isSaving
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(modifier = Modifier.weight(1f), onClick = onDone, enabled = !isSaving) {
                     Text("Cancel")
                 }
 
                 Button(
                     modifier = Modifier.weight(1f),
-                    enabled = species.isNotBlank() && !isSaving,
+                    enabled = canSave,
                     onClick = {
                         scope.launch {
+                            if (species.trim().isEmpty()) {
+                                snackbarHostState.showSnackbar("Species is required")
+                                return@launch
+                            }
+
                             isSaving = true
-                            repo.addCatch(
-                                CatchEntity(
-                                    tripId = activeTrip?.id,
-                                    timestampMillis = System.currentTimeMillis(),
-                                    species = species.trim(),
-                                    lengthCm = length.toDoubleOrNull(),
-                                    weightKg = weight.toDoubleOrNull(),
-                                    lure = lure.ifBlank { null },
-                                    notes = notes.ifBlank { null },
-                                    latitude = savedLat,
-                                    longitude = savedLon,
-                                    accuracyM = savedAcc,
-                                    photoUri = photoUriString
+                            try {
+                                // AUTO WEATHER ON SAVE (only if GPS saved)
+                                val lat = savedLat
+                                val lon = savedLon
+
+                                val weather = if (lat != null && lon != null) {
+                                    withContext(Dispatchers.IO) {
+                                        OpenMeteoClient.fetchCurrent(lat, lon)
+                                    }
+                                } else null
+
+                                repo.addCatch(
+                                    CatchEntity(
+                                        tripId = activeTrip?.id,
+                                        timestampMillis = System.currentTimeMillis(),
+                                        species = species.trim(),
+                                        lengthCm = length.toDoubleOrNull(),
+                                        weightKg = weight.toDoubleOrNull(),
+                                        lure = lure.trim().ifBlank { null },
+                                        notes = notes.trim().ifBlank { null },
+                                        latitude = lat,
+                                        longitude = lon,
+                                        accuracyM = savedAcc,
+                                        photoUri = photoUriString,
+                                        weatherTempC = weather?.temperatureC,
+                                        weatherPressureHpa = weather?.pressureHpa,
+                                        weatherFetchedAtMillis = if (weather != null) System.currentTimeMillis() else null
+                                    )
                                 )
-                            )
-                            snackbarHostState.showSnackbar("Catch saved")
-                            onDone()
+
+                                snackbarHostState.showSnackbar(
+                                    if (weather != null) "Catch saved + weather added"
+                                    else "Catch saved"
+                                )
+                                onDone()
+                            } catch (e: Exception) {
+                                snackbarHostState.showSnackbar("Save failed: ${e.message}")
+                            } finally {
+                                isSaving = false
+                            }
                         }
                     }
                 ) {
-                    Text("Save")
+                    Text(if (isSaving) "Saving..." else "Save")
                 }
             }
         }
