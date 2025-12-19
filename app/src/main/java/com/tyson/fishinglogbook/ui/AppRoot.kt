@@ -24,22 +24,25 @@ fun AppRoot() {
         composable("map") {
             CatchMapScreen(
                 onBack = { nav.popBackStack() },
-                onOpenCatch = { id -> nav.navigate("catch/$id") }
+                onOpenCatch = { id: Long -> nav.navigate("catch/$id") }
             )
         }
 
-        composable("trip_add") { AddTripScreen { nav.popBackStack() } }
-        composable("trip_active") { TripScreen { nav.popBackStack() } }
-        composable("catch_add") { AddCatchScreen { nav.popBackStack() } }
+        composable("trip_add") { AddTripScreen(onDone = { nav.popBackStack() }) }
+        composable("trip_active") { TripScreen(onBack = { nav.popBackStack() }) }
+
+        composable("catch_add") { AddCatchScreen(onDone = { nav.popBackStack() }) }
+
         composable("catch_list") {
             CatchListScreen(
                 onBack = { nav.popBackStack() },
-                onOpenCatch = { id -> nav.navigate("catch/$id") }
+                onOpenCatch = { id: Long -> nav.navigate("catch/$id") }
             )
         }
-        composable("catch/{id}") {
-            val id = it.arguments?.getString("id")!!.toLong()
-            CatchDetailScreen(id) { nav.popBackStack() }
+
+        composable("catch/{id}") { back ->
+            val id = back.arguments?.getString("id")?.toLongOrNull() ?: 0L
+            CatchDetailScreen(catchId = id, onBack = { nav.popBackStack() })
         }
     }
 }
