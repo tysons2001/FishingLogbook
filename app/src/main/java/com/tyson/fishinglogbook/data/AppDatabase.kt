@@ -4,13 +4,23 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [TripEntity::class, CatchEntity::class], version = 1, exportSchema = false)
+@Database(entities = [TripEntity::class, CatchEntity::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun dao(): AppDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE catches ADD COLUMN weatherTempC REAL")
+                db.execSQL("ALTER TABLE catches ADD COLUMN weatherPressureHpa REAL")
+                db.execSQL("ALTER TABLE catches ADD COLUMN weatherFetchedAtMillis INTEGER")
+            }
+        }
 
         fun get(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
@@ -18,7 +28,12 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "fishing_logbook.db"
-                ).build().also { INSTANCE = it }
+                )
+                    .addMigrations(MIGRATION_2_3)
+                    // still keeps you safe if you ever jump from very old builds
+                    .fallbackToDestructiveMigration()
+                    .build()
+                    .also { INSTANCE = it }
             }
     }
 }
