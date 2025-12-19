@@ -8,14 +8,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 
 class MainActivity : ComponentActivity() {
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    setContent {
-      MaterialTheme {
-        Surface {
-          Text("Fishing Logbook installed ✅")
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MaterialTheme {
+                Surface {
+                    Text("Fishing Logbook installed successfully 🎣")
+                }
+            }
         }
-      }
     }
-  }
 }
