@@ -1,5 +1,4 @@
 <resources>
-    <style name="Theme.FishingLogbook" parent="Theme.Material3.DayNight">
-        <!-- No additional overrides needed yet -->
-    </style>
+    <style name="Theme.FishingLogbook"
+        parent="Theme.MaterialComponents.DayNight.NoActionBar" />
 </resources>
