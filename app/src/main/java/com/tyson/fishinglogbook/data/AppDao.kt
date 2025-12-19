@@ -25,7 +25,10 @@ interface AppDao {
 
     @Query("SELECT * FROM catches WHERE id = :id")
     fun observeCatch(id: Long): Flow<CatchEntity?>
-
+@Query("DELETE FROM catches WHERE id = :id")
+suspend fun deleteCatch(id: Long)
+    
     @Insert
     suspend fun insertCatch(item: CatchEntity): Long
 }
+
