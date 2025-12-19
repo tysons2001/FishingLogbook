@@ -10,7 +10,7 @@
         android:translateX="6"
         android:translateY="6">
 
-        <!-- Fish head -->
+        <!-- Fish head silhouette -->
         <path
             android:fillColor="#FFFFFFFF"
             android:pathData="
