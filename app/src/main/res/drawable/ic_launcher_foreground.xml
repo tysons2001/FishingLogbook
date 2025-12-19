@@ -1,0 +1,56 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Center scale -->
+    <group
+        android:scaleX="1.1"
+        android:scaleY="1.1"
+        android:translateX="6"
+        android:translateY="6">
+
+        <!-- Fish head outline -->
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="
+                M10,54
+                C18,30 40,18 66,20
+                C84,22 92,30 96,40
+                L88,44
+                C82,36 74,32 66,32
+                C52,32 40,40 34,54
+                C40,68 52,76 66,76
+                C74,76 82,72 88,64
+                L96,68
+                C92,78 84,86 66,88
+                C40,90 18,78 10,54
+                Z" />
+
+        <!-- Mouth -->
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="
+                M52,56
+                L76,52
+                L76,60
+                Z" />
+
+        <!-- Eye -->
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="
+                M64,44
+                A4,4 0 1,1 63.9,44
+                Z" />
+
+        <!-- Jaw slash detail -->
+        <path
+            android:strokeColor="#FF000000"
+            android:strokeWidth="2"
+            android:pathData="
+                M48,64
+                L70,68" />
+    </group>
+</vector>
