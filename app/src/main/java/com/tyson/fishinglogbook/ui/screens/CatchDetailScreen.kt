@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tyson.fishinglogbook.data.AppDatabase
 import com.tyson.fishinglogbook.data.Repository
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -22,13 +23,20 @@ fun CatchDetailScreen(
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val repo = remember { Repository(AppDatabase.get(ctx).dao()) }
     val item by repo.observeCatch(catchId).collectAsState(initial = null)
+    val scope = rememberCoroutineScope()
     val fmt = remember { SimpleDateFormat("EEE d MMM yyyy, h:mm a", Locale.getDefault()) }
+
+    var showConfirmDelete by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Catch") },
-                navigationIcon = { IconButton(onClick = onBack) { Text("←") } }
+                navigationIcon = { IconButton(onClick = onBack) { Text("←") } },
+                actions = {
+                    IconButton(onClick = { showConfirmDelete = true }) { Text("🗑") }
+                }
             )
         }
     ) { pad ->
@@ -46,6 +54,8 @@ fun CatchDetailScreen(
             Modifier.fillMaxSize().padding(pad).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            message?.let { Text(it) }
+
             Text(c.species, style = MaterialTheme.typography.titleLarge)
             Text(fmt.format(Date(c.timestampMillis)))
 
@@ -62,7 +72,16 @@ fun CatchDetailScreen(
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     val hasGps = c.latitude != null && c.longitude != null
-                    Text(if (hasGps) "GPS: %.5f, %.5f (±%sm)".format(c.latitude, c.longitude, c.accuracyM?.toInt() ?: "?") else "GPS: —")
+                    Text(
+                        if (hasGps)
+                            "GPS: %.5f, %.5f (acc %sm)".format(
+                                c.latitude,
+                                c.longitude,
+                                (c.accuracyM?.toInt() ?: 0).toString()
+                            )
+                        else
+                            "GPS: —"
+                    )
 
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(
@@ -92,10 +111,35 @@ fun CatchDetailScreen(
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Photo", style = MaterialTheme.typography.titleMedium)
-                        AsyncImage(model = Uri.parse(c.photoUri), contentDescription = "Catch photo", modifier = Modifier.fillMaxWidth())
+                        AsyncImage(
+                            model = Uri.parse(c.photoUri),
+                            contentDescription = "Catch photo",
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
             }
+        }
+
+        if (showConfirmDelete) {
+            AlertDialog(
+                onDismissRequest = { showConfirmDelete = false },
+                title = { Text("Delete catch?") },
+                text = { Text("This cannot be undone.") },
+                confirmButton = {
+                    Button(onClick = {
+                        scope.launch {
+                            repo.deleteCatch(catchId)
+                            onBack()
+                        }
+                    }) { Text("Delete") }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { showConfirmDelete = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
