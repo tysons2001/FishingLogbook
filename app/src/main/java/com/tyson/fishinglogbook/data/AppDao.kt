@@ -23,6 +23,9 @@ interface AppDao {
     @Query("SELECT * FROM catches ORDER BY timestampMillis DESC")
     fun observeAllCatches(): Flow<List<CatchEntity>>
 
+    @Query("SELECT * FROM catches WHERE id = :id")
+    fun observeCatch(id: Long): Flow<CatchEntity?>
+
     @Insert
     suspend fun insertCatch(item: CatchEntity): Long
 }
