@@ -6,8 +6,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:label="Fishing Logbook"
-        android:theme="@style/Theme.FishingLogbook">
+    android:label="Fishing Logbook"
+    android:icon="@mipmap/ic_launcher"
+    android:roundIcon="@mipmap/ic_launcher_round"
+    android:theme="@style/Theme.FishingLogbook">
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
