@@ -23,4 +23,6 @@ class Repository(private val dao: AppDao) {
     }
 
     suspend fun addCatch(item: CatchEntity) = dao.insertCatch(item)
+
+    suspend fun deleteCatch(id: Long) = dao.deleteCatch(id)
 }
