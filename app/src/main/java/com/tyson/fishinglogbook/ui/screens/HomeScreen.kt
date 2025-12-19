@@ -14,44 +14,95 @@ fun HomeScreen(
     onStartTrip: () -> Unit,
     onOpenActiveTrip: () -> Unit,
     onAddCatch: () -> Unit,
-    onViewCatches: () -> Unit
+    onViewCatches: () -> Unit,
+    onOpenMap: () -> Unit
 ) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val repo = remember { Repository(AppDatabase.get(ctx).dao()) }
+
     val activeTrip by repo.observeActiveTrip().collectAsState(initial = null)
     val trips by repo.observeTrips().collectAsState(initial = emptyList())
     val catches by repo.observeAllCatches().collectAsState(initial = emptyList())
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Fishing Logbook") }) }) { pad ->
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text("Fishing Logbook") })
+        }
+    ) { pad ->
         Column(
-            Modifier.fillMaxSize().padding(pad).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(pad)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+
+            /* ===== STATUS CARD ===== */
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Text("Status", style = MaterialTheme.typography.titleMedium)
-                    Text(if (activeTrip != null) "Active trip running ✅" else "No active trip")
+
+                    Text(
+                        if (activeTrip != null)
+                            "Active trip running"
+                        else
+                            "No active trip"
+                    )
 
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(enabled = activeTrip == null, onClick = onStartTrip) { Text("Start trip") }
-                        Button(enabled = activeTrip != null, onClick = onOpenActiveTrip) { Text("Open trip") }
+                        Button(
+                            enabled = activeTrip == null,
+                            onClick = onStartTrip
+                        ) {
+                            Text("Start trip")
+                        }
+
+                        Button(
+                            enabled = activeTrip != null,
+                            onClick = onOpenActiveTrip
+                        ) {
+                            Text("Open trip")
+                        }
                     }
                 }
             }
 
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            /* ===== STATS + ACTIONS ===== */
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     Text("Trips: ${trips.size}")
                     Text("Catches: ${catches.size}")
 
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = onAddCatch) { Text("Add Catch") }
-                        Button(onClick = onViewCatches) { Text("View Catches") }
+                        Button(onClick = onAddCatch) {
+                            Text("Add Catch")
+                        }
+
+                        Button(onClick = onViewCatches) {
+                            Text("View Catches")
+                        }
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = onOpenMap) {
+                            Text("Map")
+                        }
                     }
                 }
             }
 
-            Text("Batch 4 next: Map + Export", style = MaterialTheme.typography.bodyMedium)
+            Spacer(modifier = Modifier.weight(1f))
+
+            Text(
+                text = "Map shows all catches with GPS",
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }
