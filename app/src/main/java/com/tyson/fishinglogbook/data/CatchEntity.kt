@@ -38,4 +38,5 @@ data class CatchEntity(
 
     // Moon
     val moonPhaseName: String?,
-    val moon
+    val moonIlluminationPct: Int?
+)
