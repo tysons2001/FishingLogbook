@@ -31,8 +31,11 @@ data class CatchEntity(
     val accuracyM: Float?,
     val photoUri: String?,
 
-    // NEW (Weather)
+    // Weather
     val weatherTempC: Double?,
     val weatherPressureHpa: Double?,
-    val weatherFetchedAtMillis: Long?
-)
+    val weatherFetchedAtMillis: Long?,
+
+    // Moon
+    val moonPhaseName: String?,
+    val moon
